@@ -6,7 +6,7 @@ This study examines the stochastic behaviour of Kafkaesque occurrences amidst th
 
 *For further [retrospections](https://github.com/mirabelleding/418teapot#pot_monologue).*
 
-## Occurrence Representation
+## Occurrences
 
 ### Record Structure
 
@@ -42,8 +42,6 @@ The project utilizes **Supabase PostgreSQL** for collection and storage of obser
 
 The model accepts occurrence records and optional subject-presence data as `mappings` or Pandas/Polars `DataFrame` objects.
 
-The `process` argument accepts `"poisson"`, `"calendar_poisson"`, `"hawkes"`, `"calendar_hawkes"`, or `"mmpp"`.
-
 ### Instantiation
 
 ```python
@@ -55,33 +53,30 @@ model = KafkaesqueModel(
 
 model.fit()
 ```
+*The `process` argument accepts `"poisson"`, `"calendar_poisson"`, `"hawkes"`, `"calendar_hawkes"`, or `"mmpp"`.*
 
-`presence` is optional. The fitted model estimates event-arrival dynamics and the conditional distribution of `ka_score`, with the selected process determining how observed marks inform intensity or latent states.
+*`presence` is optional.*
 
 ### Forecasting
 
 ```python
-forecast = model.predict(
-    start="2026-11-23 09:00:00",
-    end="2026-11-23 17:00:00",
+forecasts = model.predict(
+    start="2026-11-23 10:00:00",
+    end="2026-11-23 18:00:00",
 )
 ```
-
-Forecasts expose occurrence probabilities, temporal patterns, subject predictions, and conditional `ka_score` predictions through their attributes.
-
-**Exempli gratia:**
+*`start` is optional; if not specified, defaulting to the end of the fitted observation period.*
 
 ```python
-forecast.probability
-forecast.hourly
-forecast.subject
-forecast.ka_score.distribution
-forecast.ka_score.expected
-forecast.probability_curve
+forecasts.occurrences.hourly_probabilities
+forecasts.occurrences.cumulative_probabilities
+forecasts.occurrences.instantaneous_rates
+forecasts.occurrences.probability_of_happenstance
+forecasts.occurrences.subjects
+
+forecasts.ka_scores.probability_distribution
+forecasts.ka_scores.expected_score
 ```
-
-The optional `subject` argument restricts predictions to occurrences associated with a specified subject. In an environment-wide forecast, `subject` and `ka_score` refer to the **first occurrence in the interval**; their predictions are conditional on an occurrence happening.
-
 
 ## Stochastic Process Models
 
