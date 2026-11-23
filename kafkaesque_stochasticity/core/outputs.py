@@ -7,11 +7,11 @@ import polars as pl
 
 
 @dataclass(frozen=True)
-class OccurrenceForecast:
+class OccurrenceForecasts:
     instantaneous_rates: pl.DataFrame
     cumulative_probabilities: pl.DataFrame
     hourly_probabilities: pl.DataFrame
-    subjects: Mapping[str, float] | None
+    subjects: Mapping[str | int, float] | None
 
     @property
     def probability_of_happenstance(self) -> float:
@@ -21,7 +21,7 @@ class OccurrenceForecast:
 
 
 @dataclass(frozen=True)
-class KaScoreForecast:
+class KaScoreForecasts:
     probability_distribution: Mapping[int, float]
 
     @property
@@ -34,5 +34,5 @@ class KaScoreForecast:
 
 @dataclass(frozen=True)
 class Outputs:
-    occurrences: OccurrenceForecast
-    ka_scores: KaScoreForecast | None
+    occurrences: OccurrenceForecasts
+    ka_scores: KaScoreForecasts | None

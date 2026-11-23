@@ -3,9 +3,9 @@ requires = ["setuptools>=69"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "KafkaesqueStochasticity"
+name = "Kafkaesque-Stochasticity"
 version = "0.1.0"
-description = "A stochastic framework for modelling and forecasting Kafkaesque absurdity."
+description = "A stochastic framework for modelling and forecasting Kafkaesque occurrences."
 readme = "README.md"
 requires-python = ">=3.10"
 
@@ -31,4 +31,4 @@ Repository = "https://github.com/mirabelleding/Kafkaesque-Stochasticity"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["kafkaesque*"]
+include = ["kafkaesque_stochasticity*"]

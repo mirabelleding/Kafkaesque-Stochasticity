@@ -6,13 +6,13 @@ This study examines the stochastic behaviour of Kafkaesque occurrences amidst th
 
 *For further [retrospections](https://github.com/mirabelleding/418teapot#pot_monologue).*
 
-## Occurrences
+## Data Structures
 
-### Record Structure
+### Kafkaesque Occurrences
 
 ```json
 {
-    "occurred_at": "2026-11-23 10:00:00",
+    "occurred_at": "2026-11-04 14:00:00",
     "environment": "Others",
     "modality": "Message",
     "subject": "annoyance_1",
@@ -28,7 +28,25 @@ This study examines the stochastic behaviour of Kafkaesque occurrences amidst th
 | `modality` | Interaction modality |
 | `subject` | Subject associated with the occurrence |
 | `ka_score` | **Kafkaesque Absurdity score**; an integer from 1 to 10 <br> *Higher scores indicate greater perceived absurdity, without implying proportional differences in magnitude.* |
-| `testimony` |  Description of the occurrence |
+| `testimony` |  Description of the occurrence; *retained for descriptive and retrospective purposes, excluded from stochastic model estimation and forecasting.* |
+
+### Subject Presence
+`presence` is subject-specific and supports multiple intervals.
+
+*When provided, it defines the complete exposure intervals, preventing absence from being misinterpreted as reduced occurrence intensity. All associated occurrences must fall within their subjects' presence intervals.*
+
+```json
+{
+    "subject": "annoyance_1",
+    "start": "2026-01-01 00:00:00",
+    "end": "2026-07-01 23:59:59",
+}
+```
+| Attribute | Description |
+|---|---|
+| `subject` | Subject identifier |
+| `start` | Beginning of the presence interval |
+| `end` | End of the presence interval (exclusive) |
 
 
 ### Data Storage
@@ -42,18 +60,23 @@ The project utilizes **Supabase PostgreSQL** for collection and storage of obser
 
 The model accepts occurrence records and optional subject-presence data as `mappings` or Pandas/Polars `DataFrame` objects.
 
-### Instantiation
+### Instantiation and Model Fitting
 
 ```python
 model = KafkaesqueModel(
     records=records,
     presence=presence,
-    process="mmpp",
 )
 
-model.fit()
+model.fit(processes="all")
 ```
-*The `process` argument accepts `"poisson"`, `"calendar_poisson"`, `"hawkes"`, `"calendar_hawkes"`, or `"mmpp"`.*
+The `processes` argument accepts:
+
+- `"all"` — Fit all available stochastic processes.
+- A single process name, e.g. `"mmpp"`.
+- A sequence of process names, e.g. `["poisson", "hawkes", "mmpp"]`.
+
+Supported processes: `"poisson"`, `"calendar_poisson"`, `"hawkes"`, `"calendar_hawkes"`, and `"mmpp"`.
 
 *`presence` is optional.*
 
