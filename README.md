@@ -537,7 +537,8 @@ This is an instantaneous event rate and may rise or fall over time.
 **Cumulative probability curve:**
 
 ```math
-F_s(t)=P(T_{\mathrm{next},s}\leq t\mid\mathcal H_a),\qquad t\geq a
+F_s(t)=P(T_{\mathrm{next},s}\leq t\mid\mathcal H_a),
+\quad \text{for }t\geq a
 ```
 
 This is the probability that the next occurrence for subject $s$ happens by time $t$, starting from forecast time $a$. It can only increase or remain constant. Computing it under a multivariate history-dependent process or an MMPP requires accounting for other possible future events or latent-state transitions.
@@ -582,4 +583,4 @@ The stochastic process models may be evaluated and compared using the following 
 
 Log-likelihood and AIC assess historical model fit, while forecast log loss evaluates out-of-sample predictive performance.
 
-For additional evaluation methods, see [Methodology](methodology.md#model-comparison-and-validation).
+For additional evaluation methods, see [Methodology](docs/methodology.md#model-comparison-and-validation).
