@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from datetime import datetime
 from inspect import isabstract
 from typing import Self
 
+from . import processes
 from .core._types import RecordsInput
 from .core.inputs import Inputs
 from .core.outputs import Outputs
@@ -16,39 +17,39 @@ class KafkaesqueModel:
         self,
         records: RecordsInput,
         presence: RecordsInput | None = None,
+        *,
+        process: str,
     ) -> None:
+        cls = next(
+            (
+                cls
+                for cls in StochasticProcess.__subclasses__()
+                if not isabstract(cls) and cls.name == process
+            ),
+            None,
+        )
+
+        if cls is None:
+            raise ValueError(f"Unknown process: {process}")
+
         self.inputs = Inputs(records, presence)
-        self._models: dict[str, StochasticProcess] = {}
+        self.process = cls()
 
-    def fit(self, processes: str | Sequence[str]) -> Self:
-        available = {
-            cls.name: cls
-            for cls in StochasticProcess.__subclasses__()
-            if not isabstract(cls)
-        }
-
-        if processes == "all":
-            selected = tuple(available)
-        elif isinstance(processes, str):
-            selected = (processes,)
-        else:
-            selected = tuple(dict.fromkeys(processes))
-
-        if not selected:
-            raise ValueError("No stochastic processes selected.")
-
-        if unknown := set(selected) - available.keys():
-            raise ValueError(f"Unknown processes: {sorted(unknown)}")
-
-        self._models = {
-            name: available[name]().fit(self.inputs)
-            for name in selected
-        }
-
+    def fit(self) -> Self:
+        self.process.fit(self.inputs)
         return self
 
-    def predict(self, start: str, end: str) -> Outputs:
-        if not self._models:
-            raise RuntimeError("No fitted models available.")
+    def predict(
+        self,
+        start:  str | datetime,
+        end:  str | datetime,
+    ) -> Outputs:
+        start, end = (
+            datetime.fromisoformat(value) if isinstance(value, str) else value
+            for value in (start, end)
+        )
 
-        # TODO
+        if start >= end:
+            raise ValueError("Forecast start must precede end.")
+
+        return self.process.predict(start, end)

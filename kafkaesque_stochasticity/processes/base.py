@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from datetime import datetime
 from typing import ClassVar, Self
 
 from kafkaesque_stochasticity.core.inputs import Inputs
@@ -17,7 +18,7 @@ class StochasticProcess(ABC):
     @abstractmethod
     def predict(
         self,
-        start: str,
-        end: str,
+        start: datetime,
+        end: datetime,
     ) -> Outputs:
         ...

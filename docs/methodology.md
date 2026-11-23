@@ -62,7 +62,7 @@ The attribute `ka_score` is examined as both a predictor of subsequent occurrenc
 | State-dependent scores in MMPP | Examine relationships between severity and latent intensity states |
 | Out-of-sample score forecasts | Evaluate predicted score distributions and expected scores |
 
-Relationships between `ka_score`, excitation, and latent states are estimated rather than imposed. Statistical association does not establish causation.
+*Relationships between `ka_score`, excitation, and latent states are estimated rather than imposed. Statistical association does not establish causation.*
 
 ## Model Comparison and Validation
 

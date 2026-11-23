@@ -66,17 +66,12 @@ The model accepts occurrence records and optional subject-presence data as `mapp
 model = KafkaesqueModel(
     records=records,
     presence=presence,
+    process="mmpp",
 )
 
-model.fit(processes="all")
+model.fit()
 ```
-The `processes` argument accepts:
-
-- `"all"` — Fit all available stochastic processes.
-- A single process name, e.g. `"mmpp"`.
-- A sequence of process names, e.g. `["poisson", "hawkes", "mmpp"]`.
-
-Supported processes: `"poisson"`, `"calendar_poisson"`, `"hawkes"`, `"calendar_hawkes"`, and `"mmpp"`.
+The `process` argument accepts `"poisson"`, `"calendar_poisson"`, `"hawkes"`, `"calendar_hawkes"`, or `"mmpp"`.
 
 *`presence` is optional.*
 
@@ -574,3 +569,17 @@ At a given time, the environment-wide conditional intensity is the sum of the su
 An environment-wide event means **at least one occurrence involving any subject**. Its probability must be calculated from the combined event process; it is not the sum of individual occurrence probabilities. For history-dependent and latent-state models, the calculation must account for their joint dynamics.
 
 An environment-only model can forecast total occurrence probability without estimating subject-specific rates. Predicting which subject will be associated with the next event, however, requires a subject-aware model.
+
+## Model Evaluation
+
+The stochastic process models may be evaluated and compared using the following statistical metrics:
+
+| Metric | Description |
+|---|---|
+| **Log-likelihood** | Measures how well a fitted model explains observed occurrences; higher values indicate better fit. |
+| **Akaike Information Criterion (AIC)** | Balances goodness of fit against model complexity; lower values are preferred. |
+| **Forecast log loss** | Evaluates predicted probabilities against observed outcomes; lower values indicate better predictive performance. |
+
+Log-likelihood and AIC assess historical model fit, while forecast log loss evaluates out-of-sample predictive performance.
+
+For additional evaluation methods, see [Methodology](methodology.md#model-comparison-and-validation).
