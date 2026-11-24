@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import pandas as pd
 import polars as pl
 
-from ._types import RecordsInput
+from ._types import KA_SCORE, RecordsInput
 
 OCCURRENCE_COLUMNS = (
     "occurred_at", "environment", "modality", "subject", "ka_score"
@@ -16,16 +16,18 @@ PRESENCE_COLUMNS = ("subject", "start", "end")
 
 @dataclass(frozen=True)
 class Inputs:
-    occurrences: RecordsInput
-    presence: RecordsInput | None = None
+    occurrences: pl.DataFrame
+    presence: pl.DataFrame | None
 
-    def __post_init__(self) -> None:
-        occurrences = validate_occurrences(
-            to_polars(self.occurrences)
-        )
+    def __init__(
+        self,
+        occurrences: RecordsInput,
+        presence: RecordsInput | None = None,
+    ) -> None:
+        occurrences = validate_occurrences(to_polars(occurrences))
         presence = (
-            validate_presence(to_polars(self.presence))
-            if self.presence is not None
+            validate_presence(to_polars(presence))
+            if presence is not None
             else None
         )
 
@@ -39,11 +41,15 @@ class Inputs:
 def to_polars(data: RecordsInput) -> pl.DataFrame:
     if isinstance(data, pl.DataFrame):
         return data.clone()
+
     if isinstance(data, pd.DataFrame):
         return pl.from_pandas(data)
-    if isinstance(data, Mapping):
-        return pl.DataFrame(dict(data))
-    return pl.from_dicts(data)
+
+    return pl.DataFrame(
+        data,
+        schema_overrides={"ka_score": pl.String},
+        strict=False,
+    )
 
 
 def _validate_columns(data: pl.DataFrame, required: tuple[str, ...]) -> None:
@@ -81,16 +87,17 @@ def _datetime_column(data: pl.DataFrame, column: str) -> pl.DataFrame:
 
 def validate_occurrences(data: pl.DataFrame) -> pl.DataFrame:
     _validate_columns(data, OCCURRENCE_COLUMNS)
-
     data = _datetime_column(data, "occurred_at")
 
-    if (
-        not data["ka_score"].dtype.is_integer()
-        or not data["ka_score"].is_between(1, 10).all()
-    ):
-        raise ValueError("'ka_score' must be an integer between 1 and 10.")
-
-    return data
+    try:
+        return data.with_columns(
+            pl.col("ka_score").cast(KA_SCORE, strict=True)
+        )
+    except pl.exceptions.PolarsError as exc:
+        raise ValueError(
+            "'ka_score' must be an integer from 1 to 10, "
+            'its string representation, or "inf".'
+        ) from exc
 
 
 def validate_presence(
@@ -105,7 +112,6 @@ def validate_presence(
         raise ValueError("Presence interval start must precede end.")
 
     return data
-
 
 
 def validate_occurrence_presence(

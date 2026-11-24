@@ -37,11 +37,20 @@ def generate_demo_records(
     subjects: Sequence[str],
     environments: Sequence[str],
     modalities: Sequence[str],
-    ka_scores: Sequence[int],
+    ka_scores: Sequence[int | str],
     rate_per_day: float,
     seed: int,
-    presence: list[dict] | None = None,
+    presence: list[dict] | None,
+    inf_probability: float,
 ) -> list[dict]:
+    if not 0 <= inf_probability <= 1:
+        raise ValueError("'inf_probability' must be between 0 and 1.")
+
+    finite_scores = tuple(score for score in ka_scores if score != "inf")
+
+    if not finite_scores and ("inf" not in ka_scores or inf_probability < 1):
+        raise ValueError("'ka_scores' must contain finite scores.")
+
     rng = Random(seed)
     current = start
     records = []
@@ -59,10 +68,10 @@ def generate_demo_records(
             break
 
         subject = rng.choice(subjects)
-        subject_intervals = intervals.get(subject)
 
-        if subject_intervals is not None and not any(
-            a <= current < b for a, b in subject_intervals
+        if presence is not None and not any(
+            a <= current < b
+            for a, b in intervals.get(subject, ())
         ):
             continue
 
@@ -71,7 +80,11 @@ def generate_demo_records(
             "environment": rng.choice(environments),
             "modality": rng.choice(modalities),
             "subject": subject,
-            "ka_score": rng.choice(ka_scores),
+            "ka_score": (
+                "inf"
+                if "inf" in ka_scores and rng.random() < inf_probability
+                else rng.choice(finite_scores)
+            ),
             "testimony": "".join(rng.choices(ascii_letters, k=24)),
         })
 
@@ -84,8 +97,9 @@ def generate_demo_data(
     subjects: Sequence[str] = ("annoyance_1", "annoyance_2", "annoyance_3"),
     environments: Sequence[str] = ("environ_1", "environ_2"),
     modalities: Sequence[str] = ("mode_1", "mode_2", "mode_3", "mode_4"),
-    ka_scores: Sequence[int] = tuple(range(1, 11)),
+    ka_scores: Sequence[int | str] = (*range(1, 11), "inf"),
     rate_per_day: float = 2.0,
+    inf_probability: float = 0.05,
     intervals_per_subject: int = 3,
     incl_presence: bool = True,
     seed: int = 7,
@@ -109,6 +123,7 @@ def generate_demo_data(
         modalities=modalities,
         ka_scores=ka_scores,
         rate_per_day=rate_per_day,
+        inf_probability=inf_probability,
         presence=presence,
         seed=seed,
     )

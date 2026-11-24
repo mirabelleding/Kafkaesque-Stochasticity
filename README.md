@@ -27,7 +27,7 @@ This study examines the stochastic behaviour of Kafkaesque occurrences amidst th
 | `environment` | Environmental context |
 | `modality` | Interaction modality |
 | `subject` | Subject associated with the occurrence |
-| `ka_score` | **Kafkaesque Absurdity score**; an integer from 1 to 10 <br> *Higher scores indicate greater perceived absurdity, without implying proportional differences in magnitude.* |
+| `ka_score` | **Kafkaesque Absurdity Score**: <br>An integer from `1` to `10`, its string representation (`"1"`–`"10"`), or `"inf"`. <br> *Higher finite scores indicate greater perceived absurdity without implying proportional differences in magnitude. <br> `"inf"` denotes severity beyond the finite scale and should be assigned sparingly, reserved for exceptional occurrences.* |
 | `testimony` |  Description of the occurrence; *retained for descriptive and retrospective purposes, excluded from stochastic model estimation and forecasting.* |
 
 ### Subject Presence
@@ -86,14 +86,13 @@ forecasts = model.predict(
 *`start` is optional; if not specified, defaulting to the end of the fitted observation period.*
 
 ```python
-forecasts.occurrences.hourly_probabilities
-forecasts.occurrences.cumulative_probabilities
-forecasts.occurrences.instantaneous_rates
-forecasts.occurrences.probability_of_happenstance
-forecasts.occurrences.subjects
+forecasts.instantaneous_rates
+forecasts.hourly_probabilities
 
-forecasts.ka_scores.probability_distribution
-forecasts.ka_scores.expected_score
+forecasts.next_occurrence.cumulative_probabilities
+forecasts.next_occurrence.probability_of_happenstance
+forecasts.next_occurrence.subjects
+forecasts.next_occurrence.ka_score_distribution
 ```
 
 ## Stochastic Process Models
@@ -490,15 +489,39 @@ P(S_{\mathrm{next}}=s,\ T_{\mathrm{next}}\leq b\mid\mathcal H_a)
 
 A latent-state model such as an MMPP must additionally average over possible hidden-state trajectories. The first-event subject probabilities, together with the probability of **no occurrence**, sum to one.
 
+
 ### 5. Forecasting `ka_score`
 
-The score forecast is a **distribution over possible marks**, conditional on an occurrence. For the first occurrence in a forecast interval $[a,b]$, define:
+The score forecast is a **probability distribution over possible marks**, conditional on an occurrence. For the first occurrence in a forecast interval $[a,b]$, define:
 
 ```math
 p_m(a,b)
 =
-P(M_{\mathrm{next}}=m\mid T_{\mathrm{next}}\leq b,\mathcal H_a)
+P(M_{\mathrm{next}}=m\mid T_{\mathrm{next}}\leq b,\mathcal H_a),
+\qquad m\in\mathcal M
 ```
+
+Where:
+
+```math
+\mathcal M=\{1,2,\ldots,10,\infty\}
+```
+
+The indefinite severity category is represented by:
+
+```math
+p_{\infty}(a,b)
+=
+P(M_{\mathrm{next}}=\infty\mid T_{\mathrm{next}}\leq b,\mathcal H_a)
+```
+
+The probabilities across all permitted categories sum to one:
+
+```math
+\sum_{m\in\mathcal M}p_m(a,b)=1
+```
+
+*The `"inf"` category represents severity beyond the finite scale, rather than a numerical magnitude. No single expected severity score is assumed.*
 
 This conditions on at least one occurrence in the interval. A period with no occurrence has **no realized `ka_score`**; it is not assigned a score of zero.
 

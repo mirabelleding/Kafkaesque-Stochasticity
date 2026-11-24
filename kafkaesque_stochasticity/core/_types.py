@@ -12,3 +12,8 @@ RecordsInput: TypeAlias = (
     | Mapping[str, Sequence[Any]]
     | Sequence[Mapping[str, Any]]
 )
+
+KA_SCORE = pl.Enum([
+    *(str(i) for i in range(1, 11)),
+    "inf",
+])
