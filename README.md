@@ -79,21 +79,25 @@ The `process` argument accepts `"poisson"`, `"calendar_poisson"`, `"hawkes"`, `"
 
 ```python
 forecasts = model.predict(
-    start="2026-11-23 10:00:00",
-    end="2026-11-23 18:00:00",
+    start="2026-11-24 10:00:00",
+    end="2026-11-24 18:00:00",
 )
 ```
 *`start` is optional; if not specified, defaulting to the end of the fitted observation period.*
 
-```python
-forecasts.instantaneous_rates
-forecasts.hourly_probabilities
+#### Forecast Outputs
 
-forecasts.next_occurrence.cumulative_probabilities
-forecasts.next_occurrence.probability_of_happenstance
-forecasts.next_occurrence.subjects
-forecasts.next_occurrence.ka_score_distribution
+```python
+forecasts.probability_mass
+forecasts.occurrences
+forecasts.intensity
 ```
+
+| Attribute | Dimensions | Description |
+|---|---|---|
+| `probability_mass` | `hour × count` | Probability mass function of occurrence counts within each forecast hour. |
+| `occurrences` | `occurrence × subject × ka_score` | Joint subject and Kafkaesque Absurdity Score probability distribution for each occurrence position within the forecast period. |
+| `intensity` | `time` | Historical fitted intensity and forecasted expected instaneous rates.|
 
 ## Stochastic Process Models
 
@@ -362,237 +366,179 @@ For a forecast interval, define the subject's total exposure time:
 
 The presence constraint applies across all three process families. It changes the observable event intensity, but additional assumptions may be required about how a history-dependent or latent state evolves while the subject is non-present.
 
-### 3. Probability of at Least One Occurrence
+### 3. Hourly Occurrence Count Distribution
 
-The primary prediction is:
+Let $N(t)$ denote the number of occurrences observed up to time $t$, and let $\mathcal H_a$ represent the historical information available at forecast time $a$.
 
-```math
-P\big(N_s(b)-N_s(a)\geq1\mid\mathcal H_a\big)
-```
-
-The calculation depends on the selected process, including whether its baseline incorporates calendar effects.
-
-#### Model 1 — Poisson
-
-For a homogeneous Poisson process with intensity $\lambda_0$ and interval length $h=b-a$:
+The **probability mass function (PMF)** of the number of occurrences during an hour beginning at $t$ is:
 
 ```math
-P\big(N(b)-N(a)\geq1\big)
-=1-e^{-\lambda_0h}
+p_t(n)=P(N(t+1\mathrm{h})-N(t)=n\mid\mathcal H_a)
 ```
 
-For subject $s$ with a presence constraint, substitute its exposure time:
+where $n\in\{0,1,2,\ldots\}$.
+
+Each hourly timestamp identifies the beginning of a half-open interval. For example, `2026-11-24 10:00:00` represents 10:00 AM to 11:00 AM.
+
+The probabilities across all possible counts sum to one:
 
 ```math
-p_s(a,b)=1-e^{-\lambda_{0,s}\tau_s(a,b)}
+\sum_{n=0}^{\infty}p_t(n)=1
 ```
 
-With `process="calendar_poisson"`, the intensity varies deterministically by day_of_week and hour. The probability becomes:
+Several quantities can be derived from the PMF.
+
+**Probability of at least one occurrence:**
 
 ```math
-p_s(a,b)=
-1-\exp\left(
--\int_a^b P_s(t)\lambda_s(t)\,dt
-\right)
+P(N_t\geq1)=1-p_t(0)
 ```
 
-The calendar-dependent formula also accommodates intervals of confirmed non-presence. With a constant intensity, it reduces to the homogeneous formula.
-
-#### Model 2 — Hawkes
-
-The probability of at least one occurrence uses the conditional intensity along the path where **no new event occurs** after forecast time $a$:
+**Expected occurrence count:**
 
 ```math
-\lambda^{(0)}(t\mid\mathcal H_a)
-=
-\mu(t)+
-\sum_{t_i\lt a}\alpha e^{-\beta(t-t_i)},\qquad t\geq a
+E[N_t]=\sum_{n=0}^{\infty}n\,p_t(n)
 ```
 
-Here, $\mu(t)=\mu$ for `"hawkes"`; for `"calendar_hawkes"`, $\mu(t)$ follows the fitted calendar-dependent baseline.
-
-For marked excitation, replace $\alpha$ with $\alpha(m_i)$ in the sum over **observed past occurrences**. Future marks affect the dynamics after future events, but the no-event path contains no such events.
-
-For an individual subject model, including the presence constraint:
+**Cumulative count probability:**
 
 ```math
-p_s(a,b\mid\mathcal H_a)=
-1-\exp\left(
--\int_a^b P_s(t)\lambda_s^{(0)}(t\mid\mathcal H_a)\,dt
-\right)
+P(N_t\leq n)=\sum_{k=0}^{n}p_t(k)
 ```
 
-Under a constant baseline, no presence interruptions, and a single-subject process, the integrated no-event intensity simplifies to:
+For a homogeneous Poisson process with intensity $\lambda$, the hourly count distribution is:
 
 ```math
-\int_a^b\lambda^{(0)}(t\mid\mathcal H_a)\,dt
-=
-\mu(b-a)
-+
-\frac{\alpha}{\beta}
-\sum_{t_i\lt a}
-\left(e^{-\beta(a-t_i)}-e^{-\beta(b-t_i)}\right)
+p_t(n)=\frac{\lambda^n e^{-\lambda}}{n!}
 ```
 
-If subjects excite one another, forecasting an event for a particular subject must also account for possible future events of other subjects. Simply treating their histories as frozen may not give the correct subject-specific interval probability.
+when $\lambda$ is expressed in occurrences per hour.
 
-#### Model 3 — Markov-Modulated Poisson Process
+Calendar Poisson, Hawkes, and MMPP models calculate the same forecast quantity using their respective intensity dynamics.
 
-An MMPP accounts for uncertainty about the latent state and its transitions during the forecast interval.
+For history-dependent or latent-state processes, hourly counts may be statistically dependent. Each hourly PMF is therefore calculated conditional on the observed history at the forecast origin, accounting for uncertainty about future occurrences and latent-state transitions.
 
-For a time-homogeneous, two-state MMPP, let:
+### 4. Individual Occurrence Distributions
+
+For the forecast period $[a,b)$, let $S_k$ and $M_k$ denote the subject and Kafkaesque Absurdity Score associated with the $k$-th occurrence in chronological order.
+
+The joint probability distribution is:
 
 ```math
-\Lambda=\mathrm{diag}(\lambda_0,\lambda_1)
+q_k(s,m)=P(S_k=s,M_k=m\mid N(b)-N(a)\geq k,\mathcal H_a)
 ```
 
-Let $\boldsymbol\pi_a$ be the column vector of filtered state probabilities at forecast time $a$, and let $\mathbf 1$ be a column vector of ones. Then, for $h=b-a$:
-
-```math
-p(a,b\mid\mathcal H_a)
-=
-1-\boldsymbol\pi_a^{\mathsf T}
-\exp\big((Q-\Lambda)h\big)\mathbf 1
-```
-
-The matrix exponential accounts for state changes before the next event. With time-varying presence, replace $\Lambda$ with $P_s(t)\Lambda$ for a subject-specific model and propagate the state probabilities across the corresponding time intervals; a single constant matrix exponential is then insufficient.
-
-### 4. Predicting the Subject of the Next Occurrence
-
-Suppose each subject has a conditional intensity $\lambda_s(t)$. The combined instantaneous intensity is:
-
-```math
-\lambda_{\mathrm{total}}(t)=\sum_s\lambda_s(t)
-```
-
-Conditional on an event occurring at time $t$, its subject distribution is:
-
-```math
-P(S=s\mid\text{event at }t,\mathcal H_t)
-=
-\frac{\lambda_s(t)}{\sum_j\lambda_j(t)}
-```
-
-This instantaneous ratio is valid when the denominator is positive. It is **not** the probability that subject $s$ will have an event at any point during an entire day.
-
-To predict the subject of the **first event in $[a,b]$**, a model with conditional no-event intensities $\lambda_s^{(0)}(t)$ can use:
-
-```math
-P(S_{\mathrm{next}}=s,\ T_{\mathrm{next}}\leq b\mid\mathcal H_a)
-=
-\int_a^b
-\lambda_s^{(0)}(t)
-\exp\left(
--\int_a^t\lambda_{\mathrm{total}}^{(0)}(u)\,du
-\right)dt
-```
-
-A latent-state model such as an MMPP must additionally average over possible hidden-state trajectories. The first-event subject probabilities, together with the probability of **no occurrence**, sum to one.
-
-
-### 5. Forecasting `ka_score`
-
-The score forecast is a **probability distribution over possible marks**, conditional on an occurrence. For the first occurrence in a forecast interval $[a,b]$, define:
-
-```math
-p_m(a,b)
-=
-P(M_{\mathrm{next}}=m\mid T_{\mathrm{next}}\leq b,\mathcal H_a),
-\qquad m\in\mathcal M
-```
-
-Where:
+where $s$ denotes a subject and $m\in\mathcal M$, with:
 
 ```math
 \mathcal M=\{1,2,\ldots,10,\infty\}
 ```
 
-The indefinite severity category is represented by:
+Each occurrence distribution is conditional on that occurrence existing within the forecast period:
 
 ```math
-p_{\infty}(a,b)
+\sum_s\sum_{m\in\mathcal M}q_k(s,m)=1
+```
+
+The marginal distributions are obtained by summation.
+
+**Subject distribution:**
+
+```math
+P(S_k=s\mid N(b)-N(a)\geq k,\mathcal H_a)
+=\sum_m q_k(s,m)
+```
+
+**KA score distribution:**
+
+```math
+P(M_k=m\mid N(b)-N(a)\geq k,\mathcal H_a)
+=\sum_s q_k(s,m)
+```
+
+The `"inf"` category represents severity beyond the finite ordinal scale, not a numerical infinity.
+
+These distributions describe individual occurrence positions without assuming that the corresponding occurrences will necessarily happen. They preserve subject–severity associations but do not constitute the full joint distribution of an entire future occurrence sequence.
+
+### 5. Historical and Forecasted Intensity
+
+The instantaneous occurrence intensity describes the rate at which events arise over time. For a stochastic point process, the conditional intensity is defined as:
+
+```math
+\lambda(t\mid\mathcal H_t)
 =
-P(M_{\mathrm{next}}=\infty\mid T_{\mathrm{next}}\leq b,\mathcal H_a)
+\lim_{\Delta t\to0^+}
+\frac{
+P(N(t+\Delta t)-N(t)\geq1\mid\mathcal H_t)
+}{
+\Delta t
+}
 ```
 
-The probabilities across all permitted categories sum to one:
+where $\mathcal H_t$ denotes the observed event history available immediately before time $t$.
+
+*Intensity is an instantaneous rate, not a probability.* It is expressed in units such as occurrences per hour.
+
+**Historical Intensity**
+
+For historical timestamps, the fitted conditional intensity incorporates the observed occurrence history:
 
 ```math
-\sum_{m\in\mathcal M}p_m(a,b)=1
-```
-
-*The `"inf"` category represents severity beyond the finite scale, rather than a numerical magnitude. No single expected severity score is assumed.*
-
-This conditions on at least one occurrence in the interval. A period with no occurrence has **no realized `ka_score`**; it is not assigned a score of zero.
-
-The conditional expected score is:
-
-```math
-E[M_{\mathrm{next}}\mid T_{\mathrm{next}}\leq b,\mathcal H_a]
+\lambda_{\mathrm{historical}}(t)
 =
-\sum_{m\in\mathcal M}m\,p_m(a,b)
+\hat{\lambda}(t\mid\mathcal H_t)
 ```
 
-The score forecast depends on both the possible event times and the applicable score distribution:
+where $\hat{\lambda}$ denotes the intensity evaluated using the estimated model parameters.
 
-| Process | Forecasted `ka_score` |
-|---|---|
-| Poisson | Distribution of marks among expected events, optionally by subject; independent of past marks under the basic specification |
-| Hawkes | Conditional mark distribution, potentially informed by event history; past marks may also affect event timing through $\alpha(m_i)$ |
-| MMPP | Mixture of state-dependent mark distributions, accounting for hidden-state uncertainty and the states in which events are likely to occur |
+Its temporal behaviour depends on the selected stochastic process:
 
-When multiple occurrences are possible, the forecast refers to the **first occurrence** unless another target is defined explicitly. Score probabilities should be weighted by the likelihood of an event at each time; for an MMPP, simply averaging states without accounting for event intensity would generally be incorrect.
+- **Poisson:** Constant intensity.
+- **Calendar Poisson:** Intensity varies according to calendar effects.
+- **Hawkes:** Observed occurrences increase intensity through self-excitation, followed by decay.
+- **Calendar Hawkes:** Combines calendar-dependent baseline intensity with self-excitation.
+- **MMPP:** Conditional intensity reflects the inferred probabilities of latent intensity states.
 
-The subject and score may also be forecast jointly to investigate which subjects tend to be associated with which magnitudes of absurdity.
+**Forecasted Intensity**
 
-### 6. Hourly Forecasts and Probability Curves
-
-**Hourly occurrence probabilities** describe the probability of at least one event in each hour. For history-dependent models, forecasts made for later hours must account for possible events and state changes in earlier forecast hours; simply freezing the current intensity is not generally sufficient.
-
-**Conditional intensity curve:**
+For future timestamps $t\geq a$, the occurrence history beyond the forecast origin $a$ is unknown. The forecasted intensity therefore represents the conditional expectation over possible future event histories:
 
 ```math
-t\longmapsto\lambda_s^*(t\mid\mathcal H_t)
+\bar{\lambda}(t\mid\mathcal H_a)
+=
+E\left[
+\lambda(t\mid\mathcal H_t)
+\mid\mathcal H_a
+\right]
 ```
 
-This is an instantaneous event rate and may rise or fall over time.
+For history-dependent and latent-state models, this expectation accounts for uncertainty about future occurrences and latent-state transitions.
 
-**Cumulative probability curve:**
+Historical fitted intensity and forecasted expected intensity are represented along a unified time axis, distinguished by their historical or forecast status.
+
+**Relationship to Occurrence Count Probability**
+
+The expected number of occurrences within a forecast interval $[a,b)$ is obtained by integrating the forecasted intensity:
 
 ```math
-F_s(t)=P(T_{\mathrm{next},s}\leq t\mid\mathcal H_a),
-\quad \text{for }t\geq a
+E[N(b)-N(a)\mid\mathcal H_a]
+=
+\int_a^b
+\bar{\lambda}(t\mid\mathcal H_a)\,dt
 ```
 
-This is the probability that the next occurrence for subject $s$ happens by time $t$, starting from forecast time $a$. It can only increase or remain constant. Computing it under a multivariate history-dependent process or an MMPP requires accounting for other possible future events or latent-state transitions.
-
-### 7. Subject-Specific and Environment-Wide Forecasts
-
-The forecasting scope may be a single subject or the environment as a whole. Conditional `ka_score` forecasts follow the same scope.
-
-For subject $s$, the model predicts whether that subject has at least one occurrence in the forecast interval:
+The same expected count can be obtained from the corresponding count probability mass function:
 
 ```math
-p_s(a,b)=P\left(N_s(b)-N_s(a)\geq1\mid\mathcal H_a\right)
+E[N(b)-N(a)\mid\mathcal H_a]
+=
+\sum_{n=0}^{\infty}n\,P(N(b)-N(a)=n\mid\mathcal H_a)
 ```
 
-For the environment, let $N_{\mathrm{total}}(t)=\sum_s N_s(t)$, assuming each occurrence is assigned to exactly one subject. Then:
+Thus, the intensity curve describes the temporal evolution of the occurrence rate, while the probability mass function describes the distribution of occurrence counts over an interval.
 
-```math
-p_{\mathrm{total}}(a,b)=
-P\big(N_{\mathrm{total}}(b)-N_{\mathrm{total}}(a)\geq1\mid\mathcal H_a\big)
-```
+The two representations are complementary: hourly count distributions do not generally recover variations in instantaneous intensity within an hour.
 
-At a given time, the environment-wide conditional intensity is the sum of the subject-specific intensities, including their presence constraints:
-
-```math
-\lambda_{\mathrm{total}}^*(t\mid\mathcal H_t)
-=\sum_s P_s(t)\lambda_s(t\mid\mathcal H_t)
-```
-
-An environment-wide event means **at least one occurrence involving any subject**. Its probability must be calculated from the combined event process; it is not the sum of individual occurrence probabilities. For history-dependent and latent-state models, the calculation must account for their joint dynamics.
-
-An environment-only model can forecast total occurrence probability without estimating subject-specific rates. Predicting which subject will be associated with the next event, however, requires a subject-aware model.
 
 ## Model Evaluation
 
