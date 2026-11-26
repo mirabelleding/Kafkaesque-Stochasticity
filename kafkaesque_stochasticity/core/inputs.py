@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import timedelta
 
 import pandas as pd
 import polars as pl
@@ -34,6 +34,23 @@ class Inputs:
         if presence is not None:
             validate_occurrence_presence(occurrences, presence)
 
+        else:
+            start = occurrences["occurred_at"].min()
+            end = occurrences["occurred_at"].max()
+
+            if start == end:
+                raise ValueError(
+                    "Cannot infer observation exposure from a single timestamp."
+                )
+
+            subjects = occurrences["subject"].unique().to_list()
+
+            presence = pl.DataFrame({
+                "subject": subjects,
+                "start": [start] * len(subjects),
+                "end": [end + timedelta(seconds=1)] * len(subjects),
+            })
+
         object.__setattr__(self, "occurrences", occurrences)
         object.__setattr__(self, "presence", presence)
 
@@ -52,7 +69,10 @@ def to_polars(data: RecordsInput) -> pl.DataFrame:
     )
 
 
-def _validate_columns(data: pl.DataFrame, required: tuple[str, ...]) -> None:
+def _validate_dataframe(data: pl.DataFrame, required: tuple[str, ...]) -> None:
+    if data.is_empty():
+        raise ValueError("Input DataFrame cannot be empty.")
+
     missing = set(required) - set(data.columns)
 
     if missing:
@@ -86,7 +106,7 @@ def _datetime_column(data: pl.DataFrame, column: str) -> pl.DataFrame:
 
 
 def validate_occurrences(data: pl.DataFrame) -> pl.DataFrame:
-    _validate_columns(data, OCCURRENCE_COLUMNS)
+    _validate_dataframe(data, OCCURRENCE_COLUMNS)
     data = _datetime_column(data, "occurred_at")
 
     try:
@@ -103,13 +123,24 @@ def validate_occurrences(data: pl.DataFrame) -> pl.DataFrame:
 def validate_presence(
     data: pl.DataFrame,
 ) -> pl.DataFrame:
-    _validate_columns(data, PRESENCE_COLUMNS)
+    _validate_dataframe(data, PRESENCE_COLUMNS)
 
     for column in ("start", "end"):
         data = _datetime_column(data, column)
 
     if (data["start"] >= data["end"]).any():
         raise ValueError("Presence interval start must precede end.")
+
+    overlaps = (
+        data.sort("subject", "start")
+        .with_columns(
+            previous_end=pl.col("end").shift().over("subject")
+        )
+        .filter(pl.col("start") < pl.col("previous_end"))
+    )
+
+    if not overlaps.is_empty():
+        raise ValueError("Overlapping presence intervals for the same subject.")
 
     return data
 

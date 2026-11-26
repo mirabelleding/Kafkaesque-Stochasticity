@@ -26,4 +26,21 @@ FROM PUBLIC, anon, authenticated;
 
 GRANT SELECT ON public.k_occurrences_v TO authenticated;
 
+CREATE OR REPLACE VIEW public.k_presence_v
+WITH (security_invoker = true)
+AS
+SELECT
+    s.name AS subject,
+    lower(p.presence_interval) AS start,
+    upper(p.presence_interval) AS "end"
+FROM public.subject_presence AS p
+JOIN public.subjects AS s
+    ON p.subject_id = s.id;
+
+REVOKE ALL ON public.k_presence_v
+FROM PUBLIC, anon, authenticated;
+
+GRANT SELECT ON public.k_presence_v
+TO authenticated;
+
 COMMIT;

@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Self
 
 from kafkaesque_stochasticity.core.inputs import Inputs
@@ -10,9 +11,9 @@ class MMPPProcess(StochasticProcess):
     name = "mmpp"
 
     def fit(self, inputs: Inputs) -> Self:
-        ...
+        raise NotImplementedError
 
     def predict(self, start: datetime, end: datetime) -> Outputs:
-        ...
+        raise NotImplementedError
 
     # TODO

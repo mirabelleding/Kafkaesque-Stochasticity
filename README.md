@@ -30,6 +30,16 @@ This study examines the stochastic behaviour of Kafkaesque occurrences amidst th
 | `ka_score` | **Kafkaesque Absurdity Score**: <br>An integer from `1` to `10`, its string representation (`"1"`–`"10"`), or `"inf"`. <br> *Higher finite scores indicate greater perceived absurdity without implying proportional differences in magnitude. <br> `"inf"` denotes severity beyond the finite scale and should be assigned sparingly, reserved for exceptional occurrences.* |
 | `testimony` |  Description of the occurrence; *retained for descriptive and retrospective purposes, excluded from stochastic model estimation and forecasting.* |
 
+#### Kafkaesque Absurdity Score - Scoring Guidelines
+
+| Score | Severity | Description |
+|---|---|---|
+| 1–3 | Mild | Minor irrationality, logical inconsistency or bureaucratic inefficiency with limited practical consequences. |
+| 4–6 | Moderate | Evidently unreasonable or counterproductive behaviour that obstructs productivity, rational decision-making or the stated objective. |
+| 7–9 | Severe | Fundamental contradictions, substantial disregard for established facts, logical reasoning or practical constraints, with significant actual or potential consequences. |
+| 10 | Extreme | Exceptional absurdity involving profound contradictions, an inversion of the stated objective or a fundamental disregard for rational, ethical or operational principles. |
+| ∞ | Transcendent | Absurdity beyond the meaningful limits of the finite scoring framework, for which conventional severity comparisons become inadequate. |
+
 ### Subject Presence
 `presence` is subject-specific and supports multiple intervals.
 
@@ -85,19 +95,22 @@ forecasts = model.predict(
 ```
 *`start` is optional; if not specified, defaulting to the end of the fitted observation period.*
 
-#### Forecast Outputs
+#### Outputs
 
 ```python
-forecasts.probability_mass
-forecasts.occurrences
+forecasts.hourly_pmf
+forecasts.cdf
+forecasts.mark_distribution
 forecasts.intensity
 ```
 
 | Attribute | Dimensions | Description |
 |---|---|---|
-| `probability_mass` | `hour × count` | Probability mass function of occurrence counts within each forecast hour. |
-| `occurrences` | `occurrence × subject × ka_score` | Joint subject and Kafkaesque Absurdity Score probability distribution for each occurrence position within the forecast period. |
+| `hourly_probability_mass` | `hour × count` | Probability mass function of occurrence counts within each forecast hour. |
+|`cumulative_probability`|`time`|Cumulative density function of the next occurrence time.|
+| `mark_distribution` | `occurrence × subject × ka_score` | Joint subject and Kafkaesque Absurdity Score probability distribution for each occurrence position within the forecast period. |
 | `intensity` | `time` | Historical fitted intensity and forecasted expected instaneous rates.|
+
 
 ## Stochastic Process Models
 

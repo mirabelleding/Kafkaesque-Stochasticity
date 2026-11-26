@@ -7,6 +7,7 @@ import xarray as xr
 
 @dataclass(frozen=True)
 class Outputs:
-    probability_mass: xr.DataArray
-    occurrences: xr.DataArray
+    hourly_pmf: xr.DataArray
+    cdf: xr.DataArray
+    mark_distribution: xr.DataArray
     intensity: xr.DataArray

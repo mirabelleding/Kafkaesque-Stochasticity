@@ -33,19 +33,26 @@ class KafkaesqueModel:
             raise ValueError(f"Unknown process: {process}")
 
         self.inputs = Inputs(records, presence)
-        self.process = cls()
+        self.process = cls(self.inputs)
 
     def fit(self) -> Self:
-        self.process.fit(self.inputs)
+        self._fitted = False
+        self.process.fit()
+        self._fitted = True
         return self
 
     def predict(
         self,
-        start:  str | datetime,
-        end:  str | datetime,
+        start: str | datetime,
+        end: str | datetime,
     ) -> Outputs:
+        if not self._fitted:
+            raise RuntimeError("Model has not been fitted.")
+
         start, end = (
-            datetime.fromisoformat(value) if isinstance(value, str) else value
+            datetime.fromisoformat(value)
+            if isinstance(value, str)
+            else value
             for value in (start, end)
         )
 
