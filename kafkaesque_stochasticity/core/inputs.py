@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 import pandas as pd
 import polars as pl
@@ -69,7 +69,12 @@ def to_polars(data: RecordsInput) -> pl.DataFrame:
     )
 
 
-def _validate_dataframe(data: pl.DataFrame, required: tuple[str, ...]) -> None:
+def _validate_dataframe(
+    data: pl.DataFrame,
+    required: tuple[str, ...],
+    *,
+    nullable: tuple[str, ...] = (),
+) -> None:
     if data.is_empty():
         raise ValueError("Input DataFrame cannot be empty.")
 
@@ -80,7 +85,7 @@ def _validate_dataframe(data: pl.DataFrame, required: tuple[str, ...]) -> None:
 
     null_columns = [
         column for column in required
-        if data[column].null_count()
+        if column not in nullable and data[column].null_count()
     ]
 
     if null_columns:
@@ -105,13 +110,22 @@ def _datetime_column(data: pl.DataFrame, column: str) -> pl.DataFrame:
     return data
 
 
+def _impute_end_timestamp(data: pl.DataFrame) -> pl.DataFrame:
+    return data.with_columns(
+        pl.col("end").fill_null(datetime.now())
+    )
+
+
 def validate_occurrences(data: pl.DataFrame) -> pl.DataFrame:
     _validate_dataframe(data, OCCURRENCE_COLUMNS)
     data = _datetime_column(data, "occurred_at")
 
     try:
         return data.with_columns(
-            pl.col("ka_score").cast(KA_SCORE, strict=True)
+            pl.col("ka_score")
+            .cast(pl.String)
+            .str.replace(r"\.0+$", "")
+            .cast(KA_SCORE, strict=True)
         )
     except pl.exceptions.PolarsError as exc:
         raise ValueError(
@@ -120,13 +134,15 @@ def validate_occurrences(data: pl.DataFrame) -> pl.DataFrame:
         ) from exc
 
 
-def validate_presence(
-    data: pl.DataFrame,
-) -> pl.DataFrame:
-    _validate_dataframe(data, PRESENCE_COLUMNS)
+def validate_presence(data: pl.DataFrame) -> pl.DataFrame:
+    _validate_dataframe(data, PRESENCE_COLUMNS, nullable=("end",))
 
-    for column in ("start", "end"):
-        data = _datetime_column(data, column)
+    data = (
+        data
+        .pipe(_datetime_column, "start")
+        .pipe(_datetime_column, "end")
+        .pipe(_impute_end_timestamp)
+    )
 
     if (data["start"] >= data["end"]).any():
         raise ValueError("Presence interval start must precede end.")
