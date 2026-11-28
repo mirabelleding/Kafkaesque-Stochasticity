@@ -13,18 +13,14 @@ SELECT
     o.ka_score,
     o.subject_id,
     s.name AS subject,
-    o.contributor_id,
+    o.created_by,
+    o.created_at,
     t.testimony
 FROM public.occurrences AS o
 LEFT JOIN public.environments AS e ON o.environment_id = e.id
 JOIN public.modalities AS m ON o.modality_id = m.id
 JOIN public.subjects AS s ON o.subject_id = s.id
 LEFT JOIN public.testimonies AS t ON o.uuid = t.occurrence_id;
-
-REVOKE ALL ON public.k_occurrences_v
-FROM PUBLIC, anon, authenticated;
-
-GRANT SELECT ON public.k_occurrences_v TO authenticated;
 
 CREATE OR REPLACE VIEW public.k_presence_v
 WITH (security_invoker = true)
@@ -37,10 +33,9 @@ FROM public.subject_presence AS p
 JOIN public.subjects AS s
     ON p.subject_id = s.id;
 
-REVOKE ALL ON public.k_presence_v
+REVOKE ALL ON
+    public.k_occurrences_v,
+    public.k_presence_v
 FROM PUBLIC, anon, authenticated;
-
-GRANT SELECT ON public.k_presence_v
-TO authenticated;
 
 COMMIT;
