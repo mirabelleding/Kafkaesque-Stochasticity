@@ -11,9 +11,9 @@ The project utilizes **Supabase PostgreSQL** for collection and storage of Kafka
 | `modalities` | Interaction modalities, such as meetings, calls, and messages |
 | `occurrences` | Timestamped observations, Kafkaesque scores, and contributor references |
 | `testimonies` | Descriptions associated with individual occurrences |
-| `subject_presence` | Confirmed presence intervals for individual subjects |
+| `presences` | Confirmed presence intervals for individual subjects |
 
-The view `k_occurrences_v` consolidates occurrence records.
+The view `occurrences_v` consolidates occurrence records.
 
 The PostgreSQL function `submit_occurrences()` validates authenticated submissions, resolves reference IDs, and atomically inserts occurrences and testimonies.
 

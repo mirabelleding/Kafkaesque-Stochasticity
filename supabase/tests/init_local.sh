@@ -13,9 +13,9 @@ curl --fail-with-body -sS \
     -H "Content-Type: application/json" \
     -d '{
         "email": "test@test.com",
-        "password": "test123456",
+        "password": "test123",
         "email_confirm": true,
         "app_metadata": {"role": "admin"}
     }'
 
-printf '\nLocal admin user created successfully.\n'
+printf '\nLocal admin user created successfully.\nEmail: test@test.com\nPassword: test123\n'

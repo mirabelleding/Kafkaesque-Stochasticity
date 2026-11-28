@@ -193,7 +193,7 @@ BEGIN
                 v_record->>'subject';
         END IF;
 
-        INSERT INTO public.subject_presence (
+        INSERT INTO public.presences (
             subject_id,
             presence_interval
         )

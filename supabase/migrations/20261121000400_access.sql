@@ -105,22 +105,22 @@ REVOKE ALL ON TABLE
     public.environments,
     public.modalities,
     public.subjects,
-    public.subject_presence,
+    public.presences,
     public.occurrences,
     public.testimonies,
-    public.k_occurrences_v,
-    public.k_presence_v
+    public.occurrences_v,
+    public.presences_v
 FROM PUBLIC, anon, authenticated, contributor, admin;
 
 GRANT SELECT ON TABLE
     public.environments,
     public.modalities,
     public.subjects,
-    public.subject_presence,
+    public.presences,
     public.occurrences,
     public.testimonies,
-    public.k_occurrences_v,
-    public.k_presence_v
+    public.occurrences_v,
+    public.presences_v
 TO authenticated, contributor, admin;
 
 GRANT INSERT (name), UPDATE (name) ON TABLE
@@ -131,7 +131,7 @@ TO authenticated, admin;
 
 GRANT INSERT (subject_id, presence_interval),
       UPDATE (subject_id, presence_interval)
-ON TABLE public.subject_presence
+ON TABLE public.presences
 TO authenticated, admin;
 
 GRANT INSERT (
@@ -158,7 +158,7 @@ GRANT DELETE ON TABLE
     public.environments,
     public.modalities,
     public.subjects,
-    public.subject_presence,
+    public.presences,
     public.occurrences,
     public.testimonies
 TO authenticated, admin;
@@ -171,7 +171,7 @@ BEGIN
         'environments',
         'modalities',
         'subjects',
-        'subject_presence',
+        'presences',
         'occurrences'
     ]
     LOOP
@@ -193,7 +193,7 @@ BEGIN
         'environments',
         'modalities',
         'subjects',
-        'subject_presence',
+        'presences',
         'occurrences',
         'testimonies'
     ]
@@ -218,7 +218,7 @@ BEGIN
         'environments',
         'modalities',
         'subjects',
-        'subject_presence'
+        'presences'
     ]
     LOOP
         EXECUTE format(

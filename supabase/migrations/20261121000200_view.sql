@@ -1,6 +1,6 @@
 BEGIN;
 
-CREATE OR REPLACE VIEW public.k_occurrences_v
+CREATE OR REPLACE VIEW public.occurrences_v
 WITH (security_invoker = true)
 AS
 SELECT
@@ -22,20 +22,20 @@ JOIN public.modalities AS m ON o.modality_id = m.id
 JOIN public.subjects AS s ON o.subject_id = s.id
 LEFT JOIN public.testimonies AS t ON o.uuid = t.occurrence_id;
 
-CREATE OR REPLACE VIEW public.k_presence_v
+CREATE OR REPLACE VIEW public.presences_v
 WITH (security_invoker = true)
 AS
 SELECT
     s.name AS subject,
     lower(p.presence_interval) AS start,
     upper(p.presence_interval) AS "end"
-FROM public.subject_presence AS p
+FROM public.presences AS p
 JOIN public.subjects AS s
     ON p.subject_id = s.id;
 
 REVOKE ALL ON
-    public.k_occurrences_v,
-    public.k_presence_v
+    public.occurrences_v,
+    public.presences_v
 FROM PUBLIC, anon, authenticated;
 
 COMMIT;
